@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主持人控制台</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6;
+            color: #333; margin: 0; padding: 20px; display: flex; justify-content: center;
+        }
+        .dashboard {
+            background: white; width: 100%; max-width: 800px; border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); padding: 30px;
+        }
+        h1 { text-align: center; color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 15px; }
+        .status-bar { text-align: center; font-size: 24px; font-weight: bold; padding: 20px; border-radius: 10px; margin: 20px 0; }
+        .status-closed { background-color: #fce4e4; color: #c0392b; }
+        .status-open { background-color: #e8f8f5; color: #1abc9c; }
+        
+        .controls { display: flex; gap: 20px; justify-content: center; margin-bottom: 30px; }
+        button {
+            padding: 15px 30px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; color: white;
+        }
+        .btn-open { background-color: #3498db; }
+        .btn-open:hover { background-color: #2980b9; }
+        .btn-close { background-color: #e74c3c; }
+        .btn-close:hover { background-color: #c0392b; }
+
+        .results { background: #fdfefe; border: 1px solid #bdc3c7; border-radius: 10px; padding: 20px; }
+        .results h2 { margin-top: 0; color: #34495e; }
+        ol { font-size: 22px; line-height: 2; padding-left: 40px; }
+        li { border-bottom: 1px dashed #ccc; }
+        li span { font-weight: bold; color: #d35400; }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <h1>🎙️ 搶答大賽 - 主持人控制台</h1>
+        
+        <div id="status-bar" class="status-bar status-closed">目前狀態：未開放</div>
+
+        <div class="controls">
+            <button class="btn-open" onclick="sendAction('reset')">🟢 開放搶答 (清除前次紀錄)</button>
+            <button class="btn-close" onclick="sendAction('close')">🛑 強制結束搶答</button>
+        </div>
+
+        <div class="results">
+            <h2>🏆 成功搶答名單 (最快前五名)</h2>
+            <ol id="rank-list"></ol>
+        </div>
+    </div>
+
+    <script>
+        const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+        const ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws`);
+        
+        const statusBar = document.getElementById('status-bar');
+        const rankList = document.getElementById('rank-list');
+
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            if (data.type === 'state') {
+                updateDashboard(data.is_open, data.winners);
+            }
+        };
+
+        function updateDashboard(isOpen, winners) {
+            // 更新狀態列
+            if (isOpen) {
+                statusBar.className = "status-bar status-open";
+                statusBar.innerText = "目前狀態：🟢 搶答開放中！";
+            } else {
+                statusBar.className = "status-bar status-closed";
+                statusBar.innerText = "目前狀態：🛑 已關閉 / 結算中";
+            }
+
+            // 更新排行榜
+            rankList.innerHTML = '';
+            if (winners.length === 0) {
+                rankList.innerHTML = "<li><i>目前尚無人搶答</i></li>";
+            } else {
+                winners.forEach((name, index) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `第 ${index + 1} 名：<span>${name}</span>`;
+                    rankList.appendChild(li);
+                });
+            }
+        }
+
+        function sendAction(action) {
+            ws.send(JSON.stringify({ action: action }));
+        }
+    </script>
+</body>
+</html>
