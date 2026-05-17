@@ -6,53 +6,32 @@
     <title>即時搶答系統 - 參賽者</title>
     <style>
         * { box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: white; text-align: center; margin: 0; min-height: 100vh;
-            display: flex; flex-direction: column; align-items: center; padding: 20px;
-        }
-        .container {
-            background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px);
-            border-radius: 20px; padding: 40px; width: 100%; max-width: 500px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3); margin-top: 5vh;
-        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; text-align: center; margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .container { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border-radius: 20px; padding: 30px; width: 100%; max-width: 500px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); margin-top: 2vh; }
         h1 { margin-top: 0; font-size: 28px; }
-        #status {
-            background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px;
-            font-size: 20px; font-weight: bold; margin-bottom: 30px;
-        }
-        input {
-            width: 100%; padding: 15px; font-size: 18px; border-radius: 10px;
-            border: none; outline: none; text-align: center; margin-bottom: 30px;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
-        }
-        #buzzer-btn {
-            width: 200px; height: 200px; font-size: 40px; font-weight: bold;
-            border-radius: 50%; border: none; cursor: pointer; color: white;
-            transition: all 0.1s ease; outline: none;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.3), inset 0 -5px 15px rgba(0,0,0,0.2);
-        }
+        #status { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; font-size: 20px; font-weight: bold; margin-bottom: 20px; }
+        input { width: 100%; padding: 15px; font-size: 18px; border-radius: 10px; border: none; outline: none; margin-bottom: 15px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); }
+        #buzzer-btn { width: 180px; height: 180px; font-size: 40px; font-weight: bold; margin-top: 10px; border-radius: 50%; border: none; cursor: pointer; color: white; transition: all 0.1s ease; outline: none; box-shadow: 0 10px 20px rgba(0,0,0,0.3), inset 0 -5px 15px rgba(0,0,0,0.2); }
         #buzzer-btn.waiting { background: #e74c3c; box-shadow: 0 10px #c0392b; cursor: not-allowed; }
         #buzzer-btn.ready { background: #2ecc71; box-shadow: 0 10px #27ae60; cursor: pointer; }
         #buzzer-btn.ready:active { transform: translateY(10px); box-shadow: 0 0px #27ae60; }
-        
-        .leaderboard { margin-top: 40px; text-align: left; background: rgba(0,0,0,0.2); border-radius: 10px; padding: 20px; }
+        .leaderboard { margin-top: 30px; text-align: left; background: rgba(0,0,0,0.2); border-radius: 10px; padding: 20px; }
         .leaderboard h3 { margin-top: 0; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px; }
-        ol { padding-left: 20px; font-size: 18px; line-height: 1.8; }
-        li span { font-weight: bold; color: #f1c40f; }
+        ol { padding-left: 20px; font-size: 16px; line-height: 1.6; }
+        li { margin-bottom: 10px; word-wrap: break-word; overflow-wrap: anywhere; word-break: break-all; }
+        li span.name { font-weight: bold; color: #f1c40f; }
+        li span.answer { color: #ecf0f1; margin-left: 5px; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🚀 搶答大賽</h1>
         <div id="status">等待主持人開放...</div>
-        
-        <input type="text" id="username" placeholder="請先輸入您的姓名" />
-        <button id="buzzer-btn" class="waiting" disabled>搶答</button>
-
+        <input type="text" id="username" placeholder="請輸入您的姓名" />
+        <input type="text" id="answer" placeholder="請輸入您的答案 (可選)" />
+        <button id="buzzer-btn" class="waiting" disabled>等待</button>
         <div class="leaderboard">
-            <h3>🏆 搶答英雄榜 (前五名)</h3>
+            <h3>🏆 搶答即時榜</h3>
             <ol id="rank-list"></ol>
         </div>
     </div>
@@ -64,42 +43,35 @@
         const statusEl = document.getElementById('status');
         const buzzerBtn = document.getElementById('buzzer-btn');
         const usernameInput = document.getElementById('username');
+        const answerInput = document.getElementById('answer');
         const rankList = document.getElementById('rank-list');
 
         ws.onmessage = function(event) {
             const data = JSON.parse(event.data);
-            if (data.type === 'state') {
-                updateUI(data.is_open, data.winners);
-            }
+            if (data.type === 'state') updateUI(data.is_open, data.winners);
         };
 
         function updateUI(isOpen, winners) {
-            // 更新排行榜
             rankList.innerHTML = '';
-            winners.forEach((name, index) => {
+            winners.forEach((winner) => {
                 const li = document.createElement('li');
-                li.innerHTML = `<span>${name}</span> (第 ${index + 1} 名)`;
+                li.innerHTML = `<span class="name">${winner.name}</span> <br> <span class="answer">↳ 答案：${winner.answer}</span>`;
                 rankList.appendChild(li);
             });
 
-            // 自己是否已經搶到了
             const myName = usernameInput.value.trim();
-            const hasWon = winners.includes(myName) && myName !== "";
+            const hasWon = winners.some(w => w.name === myName) && myName !== "";
 
             if (isOpen) {
                 if (hasWon) {
-                    statusEl.innerText = "🎉 搶答成功！請看排行榜";
-                    setBtnState(false, 'waiting', '已搶到');
+                    statusEl.innerText = "✅ 已送出答案！";
+                    setBtnState(false, 'waiting', '已送出');
                 } else {
                     statusEl.innerText = "🟢 搶答開始！快按！";
                     setBtnState(true, 'ready', '搶答');
                 }
             } else {
-                if (winners.length > 0) {
-                    statusEl.innerText = "🛑 搶答已結束！";
-                } else {
-                    statusEl.innerText = "🔴 等待主持人開放...";
-                }
+                statusEl.innerText = "🔴 等待主持人開放...";
                 setBtnState(false, 'waiting', '等待');
             }
         }
@@ -111,12 +83,10 @@
         }
 
         buzzerBtn.onclick = function() {
-            if (!usernameInput.value.trim()) {
-                alert("請先輸入姓名！");
-                usernameInput.focus();
-                return;
-            }
-            ws.send(JSON.stringify({ action: "buzz", user: usernameInput.value.trim() }));
+            const nameVal = usernameInput.value.trim();
+            const ansVal = answerInput.value.trim() || "無答案";
+            if (!nameVal) { alert("請先輸入姓名！"); usernameInput.focus(); return; }
+            ws.send(JSON.stringify({ action: "buzz", user: nameVal, answer: ansVal }));
         };
     </script>
 </body>
